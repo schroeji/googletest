@@ -110,7 +110,16 @@ def _EscapeForMacro(s):
   return s
 
 
-def _GenerateMethods(output_lines, source, class_node):
+def _GenerateMethods(output_lines, source, class_node, base_classes, known_classes):
+  indent = ' ' * _INDENT
+  for base in base_classes:
+    base_classes = [known_classes[base_base.name] for base_base in base.bases if base_base.name in known_classes]
+    _GenerateMethods(output_lines, source, base, base_classes, known_classes)
+
+  output_lines.append("%s// Functions from %s" % (indent, class_node.name))
+  _GenerateMethodsSingleClass(output_lines, source, class_node)
+
+def _GenerateMethodsSingleClass(output_lines, source, class_node):
   function_type = (
       ast.FUNCTION_VIRTUAL | ast.FUNCTION_PURE_VIRTUAL | ast.FUNCTION_OVERRIDE)
   ctor_or_dtor = ast.FUNCTION_CTOR | ast.FUNCTION_DTOR
@@ -144,14 +153,18 @@ def _GenerateMethods(output_lines, source, class_node):
       ])
 
 
+
 def _GenerateMocks(filename, source, ast_list, desired_class_names):
   processed_class_names = set()
-  lines = []
+  processed_class_nodes = {}
+
+  processed_class_lines = {}
+
   for node in ast_list:
-    if (isinstance(node, ast.Class) and node.body and
-        # desired_class_names being None means that all classes are selected.
-        (not desired_class_names or node.name in desired_class_names)):
+    lines = []
+    if (isinstance(node, ast.Class) and node.body):
       class_name = node.name
+      print("Handling class:", class_name)
       parent_name = class_name
       processed_class_names.add(class_name)
       class_node = node
@@ -179,7 +192,10 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
       lines.append('%spublic:' % (' ' * (_INDENT // 2)))
 
       # Add all the methods.
-      _GenerateMethods(lines, source, class_node)
+      # print(processed_class_nodes[class_node.bases[0].name])
+      base_classes = [processed_class_nodes[base.name] for base in class_node.bases if base.name in processed_class_nodes]
+
+      _GenerateMethods(lines, source, class_node, base_classes, processed_class_nodes)
 
       # Close the class.
       if lines:
@@ -197,14 +213,25 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
           lines.append('}  // namespace %s' % class_node.namespace[i])
         lines.append('')  # Add an extra newline.
 
+      processed_class_nodes[class_name] = class_node
+      processed_class_lines[class_name] = lines
+
+  lines = []
   if desired_class_names:
     missing_class_name_list = list(desired_class_names - processed_class_names)
     if missing_class_name_list:
       missing_class_name_list.sort()
       sys.stderr.write('Class(es) not found in %s: %s\n' %
                        (filename, ', '.join(missing_class_name_list)))
+    for class_name in desired_class_names:
+        if class_name in processed_class_lines:
+          lines.extend(processed_class_lines[class_name])
   elif not processed_class_names:
     sys.stderr.write('No class found in %s\n' % filename)
+
+  else:
+    for class_name, class_lines in processed_class_lines.items():
+      lines.extend(class_lines)
 
   return lines
 
