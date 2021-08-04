@@ -193,7 +193,10 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
 
       # Add all the methods.
       # print(processed_class_nodes[class_node.bases[0].name])
-      base_classes = [processed_class_nodes[base.name] for base in class_node.bases if base.name in processed_class_nodes]
+      if class_node.bases != None:
+        base_classes = [processed_class_nodes[base.name] for base in class_node.bases if base.name in processed_class_nodes]
+      else:
+        base_classes = []
 
       _GenerateMethods(lines, source, class_node, base_classes, processed_class_nodes)
 

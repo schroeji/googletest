@@ -757,7 +757,6 @@ class AstBuilder(object):
           # Pop the next token and only put it back if it's not
           # 'class'.  This allows us to support the two-token
           # 'enum class' keyword as if it were simply 'enum'.
-          print("HERE")
           next = self._GetNextToken()
           if next.name != 'class':
             self._AddBackToken(next)
@@ -1244,10 +1243,6 @@ class AstBuilder(object):
     name_tokens, token = self.GetName()
     if name_tokens:
       name = ''.join([t.name for t in name_tokens])
-    print(name)
-    print(token)
-    print(token.name)
-    print(token.token_type)
     # Handle forward declarations.
     if token.token_type == tokenize.SYNTAX and token.name == ';':
       return ctor(token.start, token.end, name, None,
@@ -1263,6 +1258,7 @@ class AstBuilder(object):
     del fields[-1]                  # Remove trailing '}'.
     if token.token_type == tokenize.SYNTAX and token.name == '{':
       next = self._GetNextToken()
+
       new_type = ctor(token.start, token.end, name, fields,
                       self.namespace_stack)
       # A name means this is an anonymous type and the name
@@ -1272,16 +1268,13 @@ class AstBuilder(object):
       name = new_type
       token = next
 
+    # hack for inheriting enum classes
     if token.token_type == tokenize.SYNTAX and token.name == ':':
-      print("AAAA")
-      tmp = self._GetNextToken()
-      print(tmp)
-      print(tmp.token_type)
-      print(tmp.name)
-      print("BBBB")
+      new_type = ctor(token.start, token.end, name, fields,
+                      self.namespace_stack)
+      return new_type
 
     # Must be variable declaration using the type prefixed with keyword.
-    print(token.token_type)
     assert token.token_type == tokenize.NAME, token
     return self._CreateVariable(token, token.name, name, [], '', None)
 
