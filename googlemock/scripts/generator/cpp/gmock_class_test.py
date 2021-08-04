@@ -565,6 +565,5 @@ MOCK_METHOD(std::function<int (std::string)>, foo, (), (override));
     self.assertEqualIgnoreLeadingWhitespace(expected,
                                             self.GenerateMocks(source))
 
-
 if __name__ == '__main__':
   unittest.main()

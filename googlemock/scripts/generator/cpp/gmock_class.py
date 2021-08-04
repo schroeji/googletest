@@ -122,6 +122,8 @@ def _GenerateMethods(output_lines, source, class_node):
         not node.modifiers & ctor_or_dtor):
       # Pick out all the elements we need from the original function.
       modifiers = 'override'
+      if node.modifiers & ast.FUNCTION_NOEXCEPT:
+        modifiers = 'noexcept, ' + modifiers
       if node.modifiers & ast.FUNCTION_CONST:
         modifiers = 'const, ' + modifiers
 

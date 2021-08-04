@@ -69,6 +69,7 @@ FUNCTION_ATTRIBUTE = 0x20
 FUNCTION_UNKNOWN_ANNOTATION = 0x40
 FUNCTION_THROW = 0x80
 FUNCTION_OVERRIDE = 0x100
+FUNCTION_NOEXCEPT = 0x200
 
 """
 These are currently unused.  Should really handle these properly at some point.
@@ -1070,6 +1071,8 @@ class AstBuilder(object):
         token = self._GetNextToken()
       elif modifier_token.name == 'override':
         modifiers |= FUNCTION_OVERRIDE
+      elif modifier_token.name == 'noexcept':
+        modifiers |= FUNCTION_NOEXCEPT
       elif modifier_token.name == modifier_token.name.upper():
         # HACK(nnorwitz):  assume that all upper-case names
         # are some macro we aren't expanding.
