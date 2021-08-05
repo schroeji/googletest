@@ -158,7 +158,7 @@ def _GenerateMethodsSingleClass(output_lines, source, class_node):
 
 
 
-def _GenerateMocks(filename, source, ast_list, desired_class_names):
+def _GenerateMocks(source, ast_list, desired_class_name):
   processed_class_names = set()
   known_classes = {}
   for node in ast_list:
@@ -221,21 +221,15 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
       processed_class_lines[class_name] = lines
 
   lines = []
-  if desired_class_names:
-    missing_class_name_list = list(desired_class_names - processed_class_names)
-    if missing_class_name_list:
-      missing_class_name_list.sort()
-      sys.stderr.write('Class(es) not found in %s: %s\n' %
-                       (filename, ', '.join(missing_class_name_list)))
-    for class_name in desired_class_names:
-        if class_name in processed_class_lines:
-          lines.extend(processed_class_lines[class_name])
-  elif not processed_class_names:
+  if not processed_class_names:
     sys.stderr.write('No class found in %s\n' % filename)
-
-  else:
-    for class_name, class_lines in processed_class_lines.items():
+  if desired_class_name == "ALL":
+    for _, class_lines in processed_class_lines.items():
       lines.extend(class_lines)
+  elif desired_class_name not in processed_class_names:
+    sys.stderr.write('Class not found %s' % desired_class_name)
+  else:
+    lines.extend(processed_class_lines[class_name])
 
   return lines
 
@@ -256,9 +250,9 @@ def main(argv=sys.argv):
     sys.stderr.write('Unable to use indent of %s\n' % os.environ.get('INDENT'))
 
   filenames = argv[1:-1]
-  desired_class_names = None  # None means all classes in the source file.
+  desired_class_name = None  # None means all classes in the source file.
   if len(argv) >= 3:
-    desired_class_names = set([argv[-1]])
+    desired_class_name = argv[-1]
   source = ""
   for filename in filenames:
     source += utils.ReadFile(filename)
@@ -274,7 +268,7 @@ def main(argv=sys.argv):
     # An error message was already printed since we couldn't parse.
     sys.exit(1)
   else:
-    lines = _GenerateMocks(filename, source, entire_ast, desired_class_names)
+    lines = _GenerateMocks(source, entire_ast, desired_class_name)
     sys.stdout.write('\n'.join(lines))
 
 
