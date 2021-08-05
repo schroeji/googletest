@@ -1148,7 +1148,11 @@ class AstBuilder(object):
         tokens = list(self._GetMatchingChar('[', ']'))
         token = self._GetNextToken()
 
-      assert token.name == ';', (token, return_type_and_name, parameters)
+      if token.name == "->":
+        token = self._GetNextToken()
+
+
+      # assert token.name == ';', (token, return_type_and_name, parameters)
 
     # Looks like we got a method, not a function.
     if len(return_type) > 2 and return_type[-1].name == '::':
@@ -1517,7 +1521,9 @@ class AstBuilder(object):
       token = self._GetNextToken()
       assert token.token_type == tokenize.NAME, token
       # TODO(nnorwitz): store kind of inheritance...maybe.
-      if token.name not in ('public', 'protected', 'private'):
+      if token.name == 'virtual':
+        pass
+      elif token.name not in ('public', 'protected', 'private'):
         # If inheritance type is not specified, it is private.
         # Just put the token back so we can form a name.
         # TODO(nnorwitz): it would be good to warn about this.
@@ -1528,6 +1534,7 @@ class AstBuilder(object):
         if token.name != 'virtual':
           self._AddBackToken(token)
         else:
+          print("Virtual base")
           # TODO(nnorwitz): store that we got virtual for this base.
           pass
       base, next_token = self.GetName()
