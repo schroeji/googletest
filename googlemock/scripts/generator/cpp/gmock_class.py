@@ -110,12 +110,16 @@ def _EscapeForMacro(s):
   return s
 
 
-def _GenerateMethods(output_lines, source, class_node, base_classes, known_classes):
-  indent = ' ' * _INDENT
-  for base in base_classes:
-    base_classes = [known_classes[base_base.name] for base_base in base.bases if base_base.name in known_classes]
-    _GenerateMethods(output_lines, source, base, base_classes, known_classes)
+def _GenerateMethods(output_lines, source, class_node, known_classes):
+  if class_node.bases != None:
+    base_classes = [known_classes[base.name] for base in class_node.bases if base.name in known_classes]
+  else:
+    base_classes = []
 
+  for base in base_classes:
+    _GenerateMethods(output_lines, source, base, known_classes)
+
+  indent = ' ' * _INDENT
   output_lines.append("%s// Functions from %s" % (indent, class_node.name))
   _GenerateMethodsSingleClass(output_lines, source, class_node)
 
@@ -156,7 +160,10 @@ def _GenerateMethodsSingleClass(output_lines, source, class_node):
 
 def _GenerateMocks(filename, source, ast_list, desired_class_names):
   processed_class_names = set()
-  processed_class_nodes = {}
+  known_classes = {}
+  for node in ast_list:
+    if (isinstance(node, ast.Class) and node.body):
+      known_classes[node.name] = node
 
   processed_class_lines = {}
 
@@ -164,7 +171,7 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
     lines = []
     if (isinstance(node, ast.Class) and node.body):
       class_name = node.name
-      print("Handling class:", class_name)
+      # print("Handling class:", class_name)
       parent_name = class_name
       processed_class_names.add(class_name)
       class_node = node
@@ -193,12 +200,7 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
 
       # Add all the methods.
       # print(processed_class_nodes[class_node.bases[0].name])
-      if class_node.bases != None:
-        base_classes = [processed_class_nodes[base.name] for base in class_node.bases if base.name in processed_class_nodes]
-      else:
-        base_classes = []
-
-      _GenerateMethods(lines, source, class_node, base_classes, processed_class_nodes)
+      _GenerateMethods(lines, source, class_node, known_classes)
 
       # Close the class.
       if lines:
@@ -216,7 +218,6 @@ def _GenerateMocks(filename, source, ast_list, desired_class_names):
           lines.append('}  // namespace %s' % class_node.namespace[i])
         lines.append('')  # Add an extra newline.
 
-      processed_class_nodes[class_name] = class_node
       processed_class_lines[class_name] = lines
 
   lines = []
@@ -254,15 +255,17 @@ def main(argv=sys.argv):
   except:
     sys.stderr.write('Unable to use indent of %s\n' % os.environ.get('INDENT'))
 
-  filename = argv[1]
+  filenames = argv[1:-1]
   desired_class_names = None  # None means all classes in the source file.
   if len(argv) >= 3:
-    desired_class_names = set(argv[2:])
-  source = utils.ReadFile(filename)
+    desired_class_names = set([argv[-1]])
+  source = ""
+  for filename in filenames:
+    source += utils.ReadFile(filename)
   if source is None:
     return 1
 
-  builder = ast.BuilderFromSource(source, filename)
+  builder = ast.BuilderFromSource(source, filenames[0])
   try:
     entire_ast = filter(None, builder.Generate())
   except KeyboardInterrupt:

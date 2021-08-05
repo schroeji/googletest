@@ -360,6 +360,7 @@ class Function(_GenericDeclaration):
   def __init__(self, start, end, name, return_type, parameters,
                modifiers, templated_types, body, namespace):
     _GenericDeclaration.__init__(self, start, end, name, namespace)
+    # print("Start: {} End:".format(start, end))
     converter = TypeConverter(namespace)
     self.return_type = converter.CreateReturnType(return_type)
     self.parameters = converter.ToParameters(parameters)
@@ -462,8 +463,10 @@ class TypeConverter(object):
   def _GetTemplateEnd(self, tokens, start):
     count = 1
     end = start
+    # print("====Start====")
     while 1:
       token = tokens[end]
+      # print(token)
       end += 1
       if token.name == '<':
         count += 1
@@ -565,6 +568,7 @@ class TypeConverter(object):
       if keywords.IsKeyword(p.name):
         modifiers.append(p.name)
       elif p.name == '<':
+        # print(p)
         templated_tokens, new_end = self._GetTemplateEnd(parts, i+1)
         templated_types = self.ToType(templated_tokens)
         i = new_end - 1
@@ -661,6 +665,8 @@ class TypeConverter(object):
     return result
 
   def CreateReturnType(self, return_type_seq):
+    # print("Return_type_seq:")
+    # print(return_type_seq)
     if not return_type_seq:
       return None
     start = return_type_seq[0].start
@@ -734,7 +740,7 @@ class AstBuilder(object):
       except Exception as e:
         _, _, tb = sys.exc_info()
         traceback.print_tb(tb)
-        print("ERRROR",  e)
+        print("ERROR",  e)
         self.HandleError('exception', token)
         raise
 
@@ -820,11 +826,12 @@ class AstBuilder(object):
         self._AddBackToken(last_token)
         method_name = temp_tokens[0].name
         method = getattr(self, 'handle_' + method_name, None)
-        if not method:
+        if method == None:
           # Must be declaring a variable.
           # TODO(nnorwitz): handle the declaration.
           return None
         return method()
+      # print(last_token.name)
       return self._GetMethod(temp_tokens, 0, None, False)
     elif token.token_type == tokenize.SYNTAX:
       if token.name == '~' and self.in_class:
@@ -949,8 +956,6 @@ class AstBuilder(object):
     try:
       return next(self.tokens)
     except StopIteration:
-      print(list(self.tokens))
-      print("StopIteration exception")
       return
 
   def _AddBackToken(self, token):
@@ -1017,6 +1022,7 @@ class AstBuilder(object):
       assert token.name == '(', token
 
     name = return_type_and_name.pop()
+    # print("GetMethod:{} ".format(name))
     # Handle templatized ctors.
     if name.name == '>':
       index = 1
@@ -1050,6 +1056,7 @@ class AstBuilder(object):
 
     # Handling operator() is especially weird.
     if name.name == 'operator' and not parameters:
+      # print("Hello")
       token = self._GetNextToken()
       assert token.name == '(', token
       parameters = list(self._GetParameters())
@@ -1161,6 +1168,7 @@ class AstBuilder(object):
       return Method(indices.start, indices.end, name.name, in_class,
                     return_type, parameters, modifiers, templated_types,
                     body, self.namespace_stack)
+    # print("Return type:", return_type)
     return Function(indices.start, indices.end, name.name, return_type,
                     parameters, modifiers, templated_types, body,
                     self.namespace_stack)
@@ -1257,10 +1265,15 @@ class AstBuilder(object):
       return ctor(token.start, token.end, name, None,
                   self.namespace_stack)
 
+
+    # handle inheriting enum classes
+    if token.token_type == tokenize.SYNTAX and token.name == ':':
+      name_tokens, token = self.GetName()
+
     # Must be the type declaration.
-    fields = list(self._GetMatchingChar('{', '}'))
-    del fields[-1]                  # Remove trailing '}'.
     if token.token_type == tokenize.SYNTAX and token.name == '{':
+      fields = list(self._GetMatchingChar('{', '}'))
+      del fields[-1]                  # Remove trailing '}'.
       next = self._GetNextToken()
 
       new_type = ctor(token.start, token.end, name, fields,
@@ -1271,13 +1284,6 @@ class AstBuilder(object):
         return new_type
       name = new_type
       token = next
-
-    # hack for inheriting enum classes
-    if token.token_type == tokenize.SYNTAX and token.name == ':':
-      new_type = ctor(token.start, token.end, name, fields,
-                      self.namespace_stack)
-      return new_type
-
     # Must be variable declaration using the type prefixed with keyword.
     assert token.token_type == tokenize.NAME, token
     return self._CreateVariable(token, token.name, name, [], '', None)
@@ -1534,7 +1540,6 @@ class AstBuilder(object):
         if token.name != 'virtual':
           self._AddBackToken(token)
         else:
-          print("Virtual base")
           # TODO(nnorwitz): store that we got virtual for this base.
           pass
       base, next_token = self.GetName()
