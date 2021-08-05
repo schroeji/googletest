@@ -229,7 +229,7 @@ def _GenerateMocks(source, ast_list, desired_class_name):
   elif desired_class_name not in processed_class_names:
     sys.stderr.write('Class not found %s' % desired_class_name)
   else:
-    lines.extend(processed_class_lines[class_name])
+    lines.extend(processed_class_lines[desired_class_name])
 
   return lines
 
